@@ -1,0 +1,15 @@
+{
+  "username": "admin",
+  "password": "password",
+  "port": "8081",
+  "libraries": [
+    {
+      "name": "my videos",
+      "path": "path/to/your/folder"
+    },
+    {
+      "name": "my videos2",
+      "path": "path/to/your/folder"
+    }
+  ]
+}
