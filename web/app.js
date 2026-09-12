@@ -39,15 +39,59 @@ async function init() {
     .map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`)
     .join("");
 
-  state.library = names[0];
-  state.dir = "";
+  const urlParams = new URLSearchParams(window.location.search);
+  const requestedLib = urlParams.get("lib");
+  const requestedDir = urlParams.get("dir") || "";
+
+  if (requestedLib && names.includes(requestedLib)) {
+    state.library = requestedLib;
+    state.dir = requestedDir;
+    libSelect.value = requestedLib;
+  } else {
+    state.library = names[0];
+    state.dir = "";
+  }
+
+  // Replace the initial history state so the starting folder is recorded
+  history.replaceState({ lib: state.library, dir: state.dir }, "", makeUrl(state.library, state.dir));
+
   await browse();
 }
 
-libSelect.addEventListener("change", async () => {
-  state.library = libSelect.value;
-  state.dir = "";
+function makeUrl(lib, dir) {
+  const p = new URLSearchParams();
+  if (lib) p.set("lib", lib);
+  if (dir) p.set("dir", dir);
+  const q = p.toString();
+  return q ? `?${q}` : window.location.pathname;
+}
+
+async function navigateTo(library, dir) {
+  state.library = library;
+  state.dir = dir;
+  libSelect.value = library;
+
+  // Push new state into the browser navigation stack
+  history.pushState({ lib: library, dir: dir }, "", makeUrl(library, dir));
+
   await browse();
+}
+
+window.addEventListener("popstate", async (e) => {
+  if (e.state) {
+    state.library = e.state.lib || libSelect.value;
+    state.dir = e.state.dir || "";
+  } else {
+    const p = new URLSearchParams(window.location.search);
+    state.library = p.get("lib") || libSelect.value;
+    state.dir = p.get("dir") || "";
+  }
+  libSelect.value = state.library;
+  await browse();
+});
+
+libSelect.addEventListener("change", async () => {
+  navigateTo(libSelect.value, "");
 });
 
 refreshBtn.addEventListener("click", browse);
@@ -92,8 +136,7 @@ function renderBreadcrumb() {
 
   breadcrumbEl.querySelectorAll(".crumb:not(.current)").forEach((el) => {
     el.addEventListener("click", async () => {
-      state.dir = el.dataset.dir;
-      await browse();
+      navigateTo(state.library, el.dataset.dir);
     });
   });
 }
@@ -121,8 +164,7 @@ function renderEntries(entries) {
 
     if (entry.type === "folder") {
       li.addEventListener("click", async () => {
-        state.dir = entry.path;
-        await browse();
+        navigateTo(state.library, entry.path);
       });
     } else {
       const size = document.createElement("span");
