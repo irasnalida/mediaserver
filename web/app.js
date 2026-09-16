@@ -202,7 +202,7 @@ function open(entry, listItemEl) {
   nowPlayingTitleEl.textContent = entry.name;
   nowPlayingMetaEl.textContent = `${entry.type} · ${formatSize(entry.size)}`;
 
-  // Always stop whatever was previously playing before switching modes.
+  // Stop whatever was previously playing
   videoEl.pause();
   videoEl.classList.remove("active");
   audioEl.pause();
@@ -210,21 +210,36 @@ function open(entry, listItemEl) {
   imageEl.classList.remove("active");
 
   if (entry.type === "video") {
+    // Clear out any lingering audio stream
+    audioEl.removeAttribute("src");
+    audioEl.load();
+
+    // Set the new stream to <movi-player> and handle promise
     videoEl.src = entry.url;
     videoEl.classList.add("active");
-    videoEl.play();
+    videoEl.play().catch((err) => {
+      // Ignore AbortError when rapidly clicking files
+      if (err.name !== "AbortError") console.error("Playback error:", err);
+    });
   } else if (entry.type === "audio") {
+    // Release video decoders when switching to audio
+    videoEl.removeAttribute("src");
+    videoEl.load();
+
     audioEl.src = entry.url;
     audioEl.classList.add("active");
-    audioEl.play();
+    audioEl.play().catch((err) => {
+      if (err.name !== "AbortError") console.error("Audio error:", err);
+    });
   } else if (entry.type === "image") {
+    // Release video decoders when viewing images
+    videoEl.removeAttribute("src");
+    videoEl.load();
+
     if (DESKTOP_QUERY.matches) {
-      // Desktop/laptop: image shares the same container as video/audio.
       imageEl.src = entry.url;
       imageEl.classList.add("active");
     } else {
-      // Mobile: the fixed 16:9 video area doesn't suit photos, so pop
-      // the image up in a full-screen lightbox instead.
       openImageModal(entry.url);
     }
   }
