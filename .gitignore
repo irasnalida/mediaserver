@@ -1,2 +1,5 @@
 dist
 config.json
+
+node_modules
+web-static
