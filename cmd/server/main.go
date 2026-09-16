@@ -29,7 +29,7 @@ func main() {
 		log.Printf("warning: no valid libraries configured — edit %s and restart", configPath)
 	}
 
-	webRoot, err := fs.Sub(mediaserver.WebFS, "web")
+	webRoot, err := fs.Sub(mediaserver.WebFS, "web-static")
 	if err != nil {
 		log.Fatal(err)
 	}

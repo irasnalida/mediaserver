@@ -13,7 +13,17 @@ if not exist "%OUT_DIR%" mkdir "%OUT_DIR%"
 :: Remove existing executable to ensure a fresh replacement
 if exist "%OUT_DIR%\mediaserver.exe" del /f /q "%OUT_DIR%\mediaserver.exe"
 
-echo Building mediaserver.exe...
+echo 1/2. Building Frontend (pnpm)...
+cd frontend
+call pnpm run build
+if %ERRORLEVEL% neq 0 (
+    echo [ERROR] Frontend build failed!
+    cd ..
+    exit /b %ERRORLEVEL%
+)
+cd ..
+
+echo 2/2. Building mediaserver.exe...
 go build -ldflags="-s -w" -o "%OUT_DIR%\mediaserver.exe" .\cmd\server
 
 if %ERRORLEVEL% neq 0 (
