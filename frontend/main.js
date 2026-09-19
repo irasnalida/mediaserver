@@ -5,6 +5,10 @@ const state = {
   dir: "",
 };
 
+// Track playable files in current directory & currently active index
+let currentPlayableEntries = [];
+let activePlayableIndex = -1;
+
 const DESKTOP_QUERY = window.matchMedia("(min-width: 800px)");
 
 const libSelect = document.getElementById("librarySelect");
@@ -139,6 +143,9 @@ function renderBreadcrumb() {
 }
 
 function renderEntries(entries) {
+  currentPlayableEntries = [];
+  activePlayableIndex = -1;
+
   if (entries.length === 0) {
     entryListEl.innerHTML = '<li class="empty">This folder is empty.</li>';
     return;
@@ -168,11 +175,38 @@ function renderEntries(entries) {
       size.className = "file-size";
       size.textContent = formatSize(entry.size);
       li.appendChild(size);
-      li.addEventListener("click", () => open(entry, li));
+
+      // Track index of playable media files
+      const playableIndex = currentPlayableEntries.length;
+      currentPlayableEntries.push({ entry, el: li });
+
+      li.addEventListener("click", () => openByIndex(playableIndex));
     }
 
     entryListEl.appendChild(li);
   });
+}
+
+function openByIndex(index) {
+  if (index < 0 || index >= currentPlayableEntries.length) return;
+  activePlayableIndex = index;
+  const { entry, el } = currentPlayableEntries[index];
+  open(entry, el);
+}
+
+function navigateStep(direction) {
+  if (currentPlayableEntries.length === 0) return;
+
+  // If nothing is open yet, start from the first or last item
+  if (activePlayableIndex === -1) {
+    openByIndex(direction > 0 ? 0 : currentPlayableEntries.length - 1);
+    return;
+  }
+
+  const nextIndex = activePlayableIndex + direction;
+  if (nextIndex >= 0 && nextIndex < currentPlayableEntries.length) {
+    openByIndex(nextIndex);
+  }
 }
 
 function iconFor(type) {
@@ -195,6 +229,7 @@ function open(entry, listItemEl) {
     .querySelectorAll("#entryList li")
     .forEach((el) => el.classList.remove("playing"));
   listItemEl.classList.add("playing");
+  listItemEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
   nowPlayingTitleEl.textContent = entry.name;
   nowPlayingMetaEl.textContent = `${entry.type} · ${formatSize(entry.size)}`;
@@ -208,6 +243,7 @@ function open(entry, listItemEl) {
   imageEl.classList.remove("active");
 
   if (entry.type === "video") {
+    closeImageModal();
     audioEl.removeAttribute("src");
     audioEl.load();
 
@@ -219,6 +255,7 @@ function open(entry, listItemEl) {
       });
     }
   } else if (entry.type === "audio") {
+    closeImageModal();
     videoEl.removeAttribute("src");
     if (typeof videoEl.load === "function") videoEl.load();
 
@@ -232,6 +269,7 @@ function open(entry, listItemEl) {
     if (typeof videoEl.load === "function") videoEl.load();
 
     if (DESKTOP_QUERY.matches) {
+      closeImageModal();
       imageEl.src = entry.url;
       imageEl.classList.add("active");
     } else {
@@ -254,8 +292,24 @@ imageModalClose.addEventListener("click", closeImageModal);
 imageModal.addEventListener("click", (e) => {
   if (e.target === imageModal) closeImageModal();
 });
+
+// Global Keyboard Navigation
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeImageModal();
+  const activeTag = document.activeElement?.tagName;
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(activeTag)) return;
+
+  if (e.key === "Escape") {
+    closeImageModal();
+    return;
+  }
+
+  if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+    e.preventDefault();
+    navigateStep(1);
+  } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+    e.preventDefault();
+    navigateStep(-1);
+  }
 });
 
 function formatSize(bytes) {
