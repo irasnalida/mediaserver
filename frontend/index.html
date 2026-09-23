@@ -17,7 +17,12 @@
         <div class="player-wrap">
           <movi-player id="videoPlayer" controls></movi-player>
           <audio id="audioPlayer" controls></audio>
-          <img id="imagePlayer" alt="" />
+          <div class="image-player-wrapper">
+            <img id="imagePlayer" alt="Preview" />
+            <button id="openModalBtn" class="modal-trigger-btn" title="View Fullscreen" aria-label="Open Fullscreen">
+              ⛶
+            </button>
+          </div>
         </div>
         <div class="now-playing">
           <h2 id="nowPlayingTitle">Nothing playing</h2>

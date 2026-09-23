@@ -9,8 +9,6 @@ const state = {
 let currentPlayableEntries = [];
 let activePlayableIndex = -1;
 
-const DESKTOP_QUERY = window.matchMedia("(min-width: 800px)");
-
 const libSelect = document.getElementById("librarySelect");
 const breadcrumbEl = document.getElementById("breadcrumb");
 const entryListEl = document.getElementById("entryList");
@@ -22,8 +20,42 @@ const imageEl = document.getElementById("imagePlayer");
 const imageModal = document.getElementById("imageModal");
 const imageModalImg = document.getElementById("imageModalImg");
 const imageModalClose = document.getElementById("imageModalClose");
+const openModalBtn = document.getElementById("openModalBtn");
 const refreshBtn = document.getElementById("refreshBtn");
 
+// Side-click navigation helper (Left half = Previous, Right half = Next)
+function setupSideClickNavigation(element) {
+  element.addEventListener("click", (e) => {
+    // Only navigate if an active image is displayed
+    if (!element.src) return;
+
+    const rect = element.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const midpoint = rect.width / 2;
+
+    if (clickX < midpoint) {
+      navigateStep(-1); // Left half -> Previous
+    } else {
+      navigateStep(1);  // Right half -> Next
+    }
+  });
+}
+
+// Attach left/right navigation to both inline preview and modal view
+setupSideClickNavigation(imageEl);
+setupSideClickNavigation(imageModalImg);
+
+// Bottom-right modal open button
+if (openModalBtn) {
+  openModalBtn.addEventListener("click", (e) => {
+    e.stopPropagation(); // Avoid triggering side-click navigation
+    if (imageEl.src && imageEl.classList.contains("active")) {
+      openImageModal(imageEl.src);
+    }
+  });
+}
+
+// Navigation & Data Fetching
 function makeUrl(lib, dir) {
   const p = new URLSearchParams();
   if (lib) p.set("lib", lib);
@@ -114,6 +146,12 @@ async function browse() {
 
   state.dir = data.dir || "";
   renderBreadcrumb();
+  data.entries.sort((a, b) => {
+    // Keep folders first
+    if (a.type === "folder" && b.type !== "folder") return -1;
+    if (a.type !== "folder" && b.type === "folder") return 1;
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+  });
   renderEntries(data.entries || []);
 }
 
@@ -268,12 +306,11 @@ function open(entry, listItemEl) {
     videoEl.removeAttribute("src");
     if (typeof videoEl.load === "function") videoEl.load();
 
-    if (DESKTOP_QUERY.matches) {
-      closeImageModal();
-      imageEl.src = entry.url;
-      imageEl.classList.add("active");
-    } else {
-      openImageModal(entry.url);
+    imageEl.src = entry.url;
+    imageEl.classList.add("active");
+
+    if (imageModal.classList.contains("open")) {
+      imageModalImg.src = entry.url;
     }
   }
 }
@@ -300,6 +337,16 @@ document.addEventListener("keydown", (e) => {
 
   if (e.key === "Escape") {
     closeImageModal();
+    return;
+  }
+
+  // Toggle modal on desktop with 'f'
+  if ((e.key === "f" || e.key === "F") && imageEl.classList.contains("active")) {
+    if (imageModal.classList.contains("open")) {
+      closeImageModal();
+    } else {
+      openImageModal(imageEl.src);
+    }
     return;
   }
 
