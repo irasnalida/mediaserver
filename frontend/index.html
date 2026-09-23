@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Media Server</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Media Server</h1>
+      <select id="librarySelect"></select>
+    </header>
+
+    <div class="layout">
+      <main class="content">
+        <div class="player-wrap">
+          <movi-player id="videoPlayer" controls></movi-player>
+          <audio id="audioPlayer" controls></audio>
+          <div class="image-player-wrapper">
+            <img id="imagePlayer" alt="Preview" />
+            <button id="openModalBtn" class="modal-trigger-btn" title="View Fullscreen" aria-label="Open Fullscreen">
+              ⛶
+            </button>
+          </div>
+        </div>
+        <div class="now-playing">
+          <h2 id="nowPlayingTitle">Nothing playing</h2>
+          <p id="nowPlayingMeta">Pick a file from the list to start.</p>
+        </div>
+      </main>
+
+      <aside class="sidebar">
+        <div class="sidebar-toolbar">
+          <nav id="breadcrumb"></nav>
+          <button id="refreshBtn" title="Refresh" aria-label="Refresh">⟳</button>
+        </div>
+        <ul id="entryList"></ul>
+      </aside>
+    </div>
+
+    <div id="imageModal" class="image-modal">
+      <button id="imageModalClose" class="image-modal-close" aria-label="Close">✕</button>
+      <img id="imageModalImg" alt="" />
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

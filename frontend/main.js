@@ -1,9 +1,13 @@
+import "movi-player";
+
 const state = {
   library: null,
   dir: "",
 };
 
-const DESKTOP_QUERY = window.matchMedia("(min-width: 800px)");
+// Track playable files in current directory & currently active index
+let currentPlayableEntries = [];
+let activePlayableIndex = -1;
 
 const libSelect = document.getElementById("librarySelect");
 const breadcrumbEl = document.getElementById("breadcrumb");
@@ -16,7 +20,57 @@ const imageEl = document.getElementById("imagePlayer");
 const imageModal = document.getElementById("imageModal");
 const imageModalImg = document.getElementById("imageModalImg");
 const imageModalClose = document.getElementById("imageModalClose");
+const openModalBtn = document.getElementById("openModalBtn");
 const refreshBtn = document.getElementById("refreshBtn");
+
+// Side-click navigation helper (Left half = Previous, Right half = Next)
+function setupSideClickNavigation(element) {
+  element.addEventListener("click", (e) => {
+    // Only navigate if an active image is displayed
+    if (!element.src) return;
+
+    const rect = element.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const midpoint = rect.width / 2;
+
+    if (clickX < midpoint) {
+      navigateStep(-1); // Left half -> Previous
+    } else {
+      navigateStep(1);  // Right half -> Next
+    }
+  });
+}
+
+// Attach left/right navigation to both inline preview and modal view
+setupSideClickNavigation(imageEl);
+setupSideClickNavigation(imageModalImg);
+
+// Bottom-right modal open button
+if (openModalBtn) {
+  openModalBtn.addEventListener("click", (e) => {
+    e.stopPropagation(); // Avoid triggering side-click navigation
+    if (imageEl.src && imageEl.classList.contains("active")) {
+      openImageModal(imageEl.src);
+    }
+  });
+}
+
+// Navigation & Data Fetching
+function makeUrl(lib, dir) {
+  const p = new URLSearchParams();
+  if (lib) p.set("lib", lib);
+  if (dir) p.set("dir", dir);
+  const q = p.toString();
+  return q ? `?${q}` : window.location.pathname;
+}
+
+async function navigateTo(library, dir) {
+  state.library = library;
+  state.dir = dir;
+  libSelect.value = library;
+  history.pushState({ lib: library, dir: dir }, "", makeUrl(library, dir));
+  await browse();
+}
 
 async function init() {
   let names = [];
@@ -52,30 +106,15 @@ async function init() {
     state.dir = "";
   }
 
-  // Replace the initial history state so the starting folder is recorded
   history.replaceState({ lib: state.library, dir: state.dir }, "", makeUrl(state.library, state.dir));
-
   await browse();
 }
 
-function makeUrl(lib, dir) {
-  const p = new URLSearchParams();
-  if (lib) p.set("lib", lib);
-  if (dir) p.set("dir", dir);
-  const q = p.toString();
-  return q ? `?${q}` : window.location.pathname;
-}
+libSelect.addEventListener("change", () => {
+  navigateTo(libSelect.value, "");
+});
 
-async function navigateTo(library, dir) {
-  state.library = library;
-  state.dir = dir;
-  libSelect.value = library;
-
-  // Push new state into the browser navigation stack
-  history.pushState({ lib: library, dir: dir }, "", makeUrl(library, dir));
-
-  await browse();
-}
+refreshBtn.addEventListener("click", browse);
 
 window.addEventListener("popstate", async (e) => {
   if (e.state) {
@@ -89,12 +128,6 @@ window.addEventListener("popstate", async (e) => {
   libSelect.value = state.library;
   await browse();
 });
-
-libSelect.addEventListener("change", async () => {
-  navigateTo(libSelect.value, "");
-});
-
-refreshBtn.addEventListener("click", browse);
 
 async function browse() {
   if (!state.library) return;
@@ -113,6 +146,12 @@ async function browse() {
 
   state.dir = data.dir || "";
   renderBreadcrumb();
+  data.entries.sort((a, b) => {
+    // Keep folders first
+    if (a.type === "folder" && b.type !== "folder") return -1;
+    if (a.type !== "folder" && b.type === "folder") return 1;
+    return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+  });
   renderEntries(data.entries || []);
 }
 
@@ -135,13 +174,16 @@ function renderBreadcrumb() {
     .join('<span class="sep">/</span>');
 
   breadcrumbEl.querySelectorAll(".crumb:not(.current)").forEach((el) => {
-    el.addEventListener("click", async () => {
+    el.addEventListener("click", () => {
       navigateTo(state.library, el.dataset.dir);
     });
   });
 }
 
 function renderEntries(entries) {
+  currentPlayableEntries = [];
+  activePlayableIndex = -1;
+
   if (entries.length === 0) {
     entryListEl.innerHTML = '<li class="empty">This folder is empty.</li>';
     return;
@@ -163,7 +205,7 @@ function renderEntries(entries) {
     li.appendChild(name);
 
     if (entry.type === "folder") {
-      li.addEventListener("click", async () => {
+      li.addEventListener("click", () => {
         navigateTo(state.library, entry.path);
       });
     } else {
@@ -171,11 +213,38 @@ function renderEntries(entries) {
       size.className = "file-size";
       size.textContent = formatSize(entry.size);
       li.appendChild(size);
-      li.addEventListener("click", () => open(entry, li));
+
+      // Track index of playable media files
+      const playableIndex = currentPlayableEntries.length;
+      currentPlayableEntries.push({ entry, el: li });
+
+      li.addEventListener("click", () => openByIndex(playableIndex));
     }
 
     entryListEl.appendChild(li);
   });
+}
+
+function openByIndex(index) {
+  if (index < 0 || index >= currentPlayableEntries.length) return;
+  activePlayableIndex = index;
+  const { entry, el } = currentPlayableEntries[index];
+  open(entry, el);
+}
+
+function navigateStep(direction) {
+  if (currentPlayableEntries.length === 0) return;
+
+  // If nothing is open yet, start from the first or last item
+  if (activePlayableIndex === -1) {
+    openByIndex(direction > 0 ? 0 : currentPlayableEntries.length - 1);
+    return;
+  }
+
+  const nextIndex = activePlayableIndex + direction;
+  if (nextIndex >= 0 && nextIndex < currentPlayableEntries.length) {
+    openByIndex(nextIndex);
+  }
 }
 
 function iconFor(type) {
@@ -198,49 +267,50 @@ function open(entry, listItemEl) {
     .querySelectorAll("#entryList li")
     .forEach((el) => el.classList.remove("playing"));
   listItemEl.classList.add("playing");
+  listItemEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
 
   nowPlayingTitleEl.textContent = entry.name;
   nowPlayingMetaEl.textContent = `${entry.type} · ${formatSize(entry.size)}`;
 
-  // Stop whatever was previously playing
-  videoEl.pause();
+  // Pause active players safely
+  if (typeof videoEl.pause === "function") videoEl.pause();
   videoEl.classList.remove("active");
-  audioEl.pause();
+
+  if (typeof audioEl.pause === "function") audioEl.pause();
   audioEl.classList.remove("active");
   imageEl.classList.remove("active");
 
   if (entry.type === "video") {
-    // Clear out any lingering audio stream
+    closeImageModal();
     audioEl.removeAttribute("src");
     audioEl.load();
 
-    // Set the new stream to <movi-player> and handle promise
     videoEl.src = entry.url;
     videoEl.classList.add("active");
-    videoEl.play().catch((err) => {
-      // Ignore AbortError when rapidly clicking files
-      if (err.name !== "AbortError") console.error("Playback error:", err);
-    });
+    if (typeof videoEl.play === "function") {
+      videoEl.play().catch((err) => {
+        if (err.name !== "AbortError") console.error("Playback error:", err);
+      });
+    }
   } else if (entry.type === "audio") {
-    // Release video decoders when switching to audio
+    closeImageModal();
     videoEl.removeAttribute("src");
-    videoEl.load();
+    if (typeof videoEl.load === "function") videoEl.load();
 
     audioEl.src = entry.url;
     audioEl.classList.add("active");
     audioEl.play().catch((err) => {
-      if (err.name !== "AbortError") console.error("Audio error:", err);
+      if (err.name !== "AbortError") console.error("Audio playback error:", err);
     });
   } else if (entry.type === "image") {
-    // Release video decoders when viewing images
     videoEl.removeAttribute("src");
-    videoEl.load();
+    if (typeof videoEl.load === "function") videoEl.load();
 
-    if (DESKTOP_QUERY.matches) {
-      imageEl.src = entry.url;
-      imageEl.classList.add("active");
-    } else {
-      openImageModal(entry.url);
+    imageEl.src = entry.url;
+    imageEl.classList.add("active");
+
+    if (imageModal.classList.contains("open")) {
+      imageModalImg.src = entry.url;
     }
   }
 }
@@ -259,8 +329,34 @@ imageModalClose.addEventListener("click", closeImageModal);
 imageModal.addEventListener("click", (e) => {
   if (e.target === imageModal) closeImageModal();
 });
+
+// Global Keyboard Navigation
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeImageModal();
+  const activeTag = document.activeElement?.tagName;
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(activeTag)) return;
+
+  if (e.key === "Escape") {
+    closeImageModal();
+    return;
+  }
+
+  // Toggle modal on desktop with 'f'
+  if ((e.key === "f" || e.key === "F") && imageEl.classList.contains("active")) {
+    if (imageModal.classList.contains("open")) {
+      closeImageModal();
+    } else {
+      openImageModal(imageEl.src);
+    }
+    return;
+  }
+
+  if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+    e.preventDefault();
+    navigateStep(1);
+  } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+    e.preventDefault();
+    navigateStep(-1);
+  }
 });
 
 function formatSize(bytes) {

@@ -1,0 +1,380 @@
+:root {
+  --bg: #0f0f0f;
+  --panel: #181818;
+  --border: #303030;
+  --text: #f1f1f1;
+  --muted: #aaaaaa;
+  --accent: #3ea6ff;
+  --header-h: 52px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ---------- Viewport lockdown ---------- */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ---------- Header ---------- */
+header {
+  flex-shrink: 0;
+  height: var(--header-h);
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#librarySelect {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 13px;
+  max-width: 55%;
+}
+
+/* ---------- Mobile Layout (Fixed Top Player + Scrollable List) ---------- */
+.layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.player-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+/* movi-player & Media Elements */
+movi-player,
+video,
+audio,
+#imagePlayer {
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: none;
+}
+
+movi-player.active,
+video.active {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+
+audio.active {
+  display: block;
+}
+
+#imagePlayer.active {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.image-player-wrapper {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.modal-trigger-btn {
+  display: none;
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 15px;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+  user-select: none;
+}
+
+#imagePlayer.active ~ .modal-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-trigger-btn:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.08);
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+.modal-trigger-btn:active {
+  transform: scale(0.96);
+}
+
+#imageModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+#imageModal.open {
+  display: flex;
+}
+
+#imageModalImg {
+  max-width: 100vw;
+  max-height: 100vh;
+  object-fit: contain;
+  cursor: pointer;
+}
+
+.now-playing {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+#nowPlayingTitle {
+  margin: 0 0 2px;
+  font-size: 15px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+#nowPlayingMeta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: capitalize;
+}
+
+/* ---------- Sidebar & File List ---------- */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-top: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.sidebar-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+#breadcrumb {
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+#breadcrumb .crumb {
+  cursor: pointer;
+}
+
+#breadcrumb .crumb:hover {
+  color: var(--accent);
+}
+
+#breadcrumb .crumb.current {
+  color: var(--text);
+  cursor: default;
+}
+
+#breadcrumb .sep {
+  margin: 0 4px;
+}
+
+#refreshBtn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#refreshBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#entryList {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+}
+
+#entryList li {
+  padding: 7px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.3;
+}
+
+#entryList li:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#entryList li.playing {
+  background: rgba(62, 166, 255, 0.15);
+  color: var(--accent);
+}
+
+#entryList li.empty {
+  color: var(--muted);
+  cursor: default;
+  padding: 12px;
+}
+
+#entryList li.empty:hover {
+  background: none;
+}
+
+.icon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.entry-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ---------- Mobile Image Lightbox ---------- */
+.image-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.92);
+  align-items: center;
+  justify-content: center;
+}
+
+.image-modal.open {
+  display: flex;
+}
+
+.image-modal img {
+  max-width: 92vw;
+  max-height: 92vh;
+  object-fit: contain;
+}
+
+.image-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.image-modal-close:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ---------- Desktop Layout (Sidebar Left, Video Right) ---------- */
+@media (min-width: 800px) {
+  .layout {
+    flex-direction: row-reverse;
+    height: calc(100vh - var(--header-h));
+  }
+
+  .content {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .player-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+
+  .sidebar {
+    flex: 0 0 360px;
+    width: 360px;
+    min-height: 0;
+    border-top: none;
+    border-right: 1px solid var(--border);
+  }
+}

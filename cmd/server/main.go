@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io/fs"
 	"log"
 	mediaserver "mediaserver"
@@ -12,6 +13,9 @@ import (
 )
 
 func main() {
+	debugMode := flag.Bool("debug", false, "Run in backend-only debug mode (omits frontend assets)")
+	flag.Parse()
+
 	media.RegisterMIMETypes()
 
 	configPath := os.Getenv("CONFIG_FILE")
@@ -29,9 +33,15 @@ func main() {
 		log.Printf("warning: no valid libraries configured — edit %s and restart", configPath)
 	}
 
-	webRoot, err := fs.Sub(mediaserver.WebFS, "web")
-	if err != nil {
-		log.Fatal(err)
+	var webRoot fs.FS
+	if *debugMode {
+		log.Println("[DEBUG] Running in debug mode: web frontend routes disabled")
+	} else {
+		var err error
+		webRoot, err = fs.Sub(mediaserver.WebFS, "web-static")
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	srv := server.New(cfg, libs, webRoot)
